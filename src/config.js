@@ -1,12 +1,16 @@
 const mongoose = require('mongoose');
-const connect = mongoose.connect("mongodb+srv://nikhilsuryawanshiskncomp:z6q3WMytyxuZDlHM@nikhil.n3l1oyr.mongodb.net/?retryWrites=true&w=majority&appName=Nikhil");
-// Check database connected or not
-connect.then(() => {
-    console.log("Database Connected Successfully");
-})
-.catch(() => {
-    console.log("Database cannot be Connected");
-})
+
+
+const connectToDatabase = async () => {
+    try {
+        await mongoose.connect("mongodb://localhost:27017/users");
+        console.log("Database Connected Successfully");
+    } catch (error) {
+        console.log("Database cannot be Connected");
+    }
+};
+
+connectToDatabase();
 
 // Create Schema
 const Loginschema = new mongoose.Schema({
@@ -23,4 +27,6 @@ const Loginschema = new mongoose.Schema({
 // collection part
 const collection = new mongoose.model("users", Loginschema);
 
-module.exports = collection;
+module.exports = collection;
+
+
