@@ -68,22 +68,41 @@ app.post("/login", async (req, res) => {
     try {
         const username = req.body.username;
 
-        const lockedUser = await collection.findOne({ name: username, lockedUntil: { $gt: Date.now() } });
-        if (lockedUser) {
-            return res.send("Your account is locked. Please try again later.");
-        }
-
         const user = await collection.findOne({ name: username });
         if (!user) {
             return res.send("User name not found");
         }
+        if(user.is_blocked){
+            // check blocked time
+            const user = await collection.findOne({ name: username }).lean();
+            // now compare the current time and the blocked_till time from user
+            const blocked_till = new Date(user.blocked_till);
+            const current_time = new Date();
+
+            if(current_time.getTime() >= blocked_till.getTime()){
+                // now unblock the user
+                await collection.findOneAndUpdate({ name: username }, { failed_attempts: 0, is_blocked: false });
+            }else{
+                return res.send("User account is blocked for 24 hrs");
+            }
+        }
 
         const isPasswordMatch = await bcrypt.compare(req.body.password, user.password);
+
         if (!isPasswordMatch) {
-            await updateLoginAttemptCount(username);
+            user.failed_attempts = user.failed_attempts + 1;
+            if(user.failed_attempts >= 5){
+                // now block the use account
+                const currentDate = new Date();
+                const blocked_till = new Date(currentDate.getTime() + (12 * 60 * 60 * 1000));
+                await collection.findOneAndUpdate({ name: username }, { failed_attempts: user.failed_attempts, is_blocked: true, blocked_till  });
+            }else{
+                // now only increament the failed count
+                await collection.findOneAndUpdate({ name: username }, { failed_attempts: user.failed_attempts });
+            }
             return res.redirect("/login"); 
         }
-        await resetLoginAttemptCount(username);
+        await collection.findOneAndUpdate({ name: username }, { failed_attempts: 0, is_blocked: false });
 
         res.render("home", { username: user.name });
     } catch (error) {
@@ -91,28 +110,6 @@ app.post("/login", async (req, res) => {
         res.send("Something went wrong. Please try again later.");
     }
 });
-
-async function updateLoginAttemptCount(username) {
-    const user = await collection.findOneAndUpdate(
-        { name: username },
-        { $inc: { loginAttempts: 1 } },
-        { returnOriginal: false }
-    );
-
-    if (user.value && user.value.loginAttempts >= MAX_LOGIN_ATTEMPTS) {
-        await collection.updateOne(
-            { name: username },
-            { $set: { lockedUntil: Date.now() + (24 * 60 * 60 * 1000), loginAttempts: 0 } }
-        );
-    }
-}
-
-async function resetLoginAttemptCount(username) {
-    await collection.updateOne(
-        { name: username },
-        { $set: { loginAttempts: 0 } }
-    );
-}
 
 
 const port = 5000;

@@ -21,6 +21,17 @@ const Loginschema = new mongoose.Schema({
     password: {
         type: String,
         required: true
+    },
+    failed_attempts: {
+        type: Number,
+        default: 0
+    },
+    is_blocked: {
+        type: Boolean,
+        default: false
+    },
+    blocked_till: {
+        type: Date
     }
 });
 
