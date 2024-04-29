@@ -3,17 +3,10 @@ const path = require("path");
 const collection = require("./config");
 const bcrypt = require('bcrypt');
 
-
-
-
 const app = express();
-
 app.use(express.json());
-
 app.use(express.static("public"));
-
 app.use(express.urlencoded({ extended: false }));
-
 app.set("view engine", "ejs");
 
 app.get("/",(req,res)=>{
