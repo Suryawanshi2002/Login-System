@@ -12,7 +12,6 @@ const connectToDatabase = async () => {
 
 connectToDatabase();
 
-// Create Schema
 
 const Loginschema = new mongoose.Schema({
     name: {
@@ -40,7 +39,6 @@ const Loginschema = new mongoose.Schema({
 });
 
 
-// collection part
 const collection = new mongoose.model("users", Loginschema);
 
 module.exports = collection;
