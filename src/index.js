@@ -94,7 +94,7 @@ app.post("/login", async (req, res) => {
             if(user.failed_attempts >= 5){
                 // now block the use account
                 const currentDate = new Date();
-                const blocked_till = new Date(currentDate.getTime() + (12 * 60 * 60 * 1000));
+                const blocked_till = new Date(currentDate.getTime() + (24 * 60 * 60 * 1000));
                 await collection.findOneAndUpdate({ name: username }, { failed_attempts: user.failed_attempts, is_blocked: true, blocked_till  });
             }else{
                 // now only increament the failed count
