@@ -13,9 +13,10 @@ const connectToDatabase = async () => {
 connectToDatabase();
 
 // Create Schema
+
 const Loginschema = new mongoose.Schema({
     name: {
-        type:String,
+        type: String,
         required: true
     },
     password: {
@@ -32,8 +33,12 @@ const Loginschema = new mongoose.Schema({
     },
     blocked_till: {
         type: Date
+    },
+    last_failed_attempt: {
+        type: Date
     }
 });
+
 
 // collection part
 const collection = new mongoose.model("users", Loginschema);
