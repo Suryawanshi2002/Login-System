@@ -62,7 +62,7 @@ app.post("/login", async (req, res) => {
 
         const user = await collection.findOne({ name: username });
         if (!user) {
-            return res.send("User name not found");
+            return res.send("Username not found");
         }
 
         if (user.is_blocked) {
@@ -70,7 +70,7 @@ app.post("/login", async (req, res) => {
             const currentTime = new Date();
 
             if (currentTime.getTime() >= blockedTill.getTime()) {
-                await collection.findOneAndUpdate({ name: username }, { failed_attempts: 0, is_blocked: false });
+                await collection.findOneAndUpdate({ name: username }, { failed_attempts: 0, is_blocked: false, failed_attempt_times: [] });
             } else {
                 return res.send("User account is blocked for 24 hrs");
             }
@@ -82,24 +82,42 @@ app.post("/login", async (req, res) => {
             const currentTime = new Date();
             const lastFailedAttempt = new Date(user.last_failed_attempt);
 
-            if (currentTime.getTime() - lastFailedAttempt.getTime() <= 12 * 60 * 60 * 1000) {
-                user.failed_attempts += 1;
+            
+            const timeDifference = currentTime.getTime() - lastFailedAttempt.getTime();
 
-                if (user.failed_attempts >= 5) {
-                    const blockedTill = new Date(currentTime.getTime() + (24 * 60 * 60 * 1000));
-                    await collection.findOneAndUpdate({ name: username }, { failed_attempts: user.failed_attempts, is_blocked: true, blocked_till: blockedTill, last_failed_attempt: currentTime });
-                    return res.send("User account is blocked for 24 hrs due to consecutive failed attempts.");
+            if (timeDifference <= 12 * 60 * 60 * 1000) {
+            
+                if (user.failed_attempt_times.length > 0) {
+                    const recentAttempts = user.failed_attempt_times.filter(attemptTime => {
+                        const attemptDateTime = new Date(attemptTime);
+                        const attemptTimeDifference = currentTime.getTime() - attemptDateTime.getTime();
+                        return attemptTimeDifference <= 12 * 60 * 60 * 1000; 
+                    });
+
+                    if (recentAttempts.length >= 5) {
+                        const blockedTill = new Date(currentTime.getTime() + (24 * 60 * 60 * 1000));
+                        await collection.findOneAndUpdate({ name: username }, { failed_attempts: user.failed_attempts, is_blocked: true, blocked_till: blockedTill, last_failed_attempt: currentTime, failed_attempt_times: user.failed_attempt_times });
+                        return res.send("User account is blocked for 24 hrs due to consecutive failed attempts.");
+                    } else {
+                        user.failed_attempts += 1;
+                        user.failed_attempt_times.push(currentTime);
+                        await collection.findOneAndUpdate({ name: username }, { failed_attempts: user.failed_attempts, last_failed_attempt: currentTime, failed_attempt_times: user.failed_attempt_times });
+                        return res.send(`Invalid password. ${5 - recentAttempts.length} attempts remaining within the last 12 hours.`);
+                    }
                 } else {
-                    await collection.findOneAndUpdate({ name: username }, { failed_attempts: user.failed_attempts, last_failed_attempt: currentTime });
-                    return res.send(`Invalid password. ${5 - user.failed_attempts} attempts remaining before account is blocked.`);
+                    
+                    await collection.findOneAndUpdate({ name: username }, { failed_attempts: 1, last_failed_attempt: currentTime, failed_attempt_times: [currentTime] });
+                    return res.send("Invalid password. 4 attempts remaining before account is blocked.");
                 }
             } else {
-                await collection.findOneAndUpdate({ name: username }, { failed_attempts: 1, last_failed_attempt: currentTime });
+                
+                await collection.findOneAndUpdate({ name: username }, { failed_attempts: 1, last_failed_attempt: currentTime, failed_attempt_times: [currentTime] });
                 return res.send("Invalid password. 4 attempts remaining before account is blocked.");
             }
         }
 
-        await collection.findOneAndUpdate({ name: username }, { failed_attempts: 0, last_failed_attempt: null });
+        
+        await collection.findOneAndUpdate({ name: username }, { failed_attempts: 0, last_failed_attempt: null, failed_attempt_times: [] });
 
         res.render("home", { username: user.name });
     } catch (error) {
