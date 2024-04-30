@@ -26,6 +26,10 @@ const Loginschema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    failed_attempt_times: {
+        type: [Date],
+        default: []
+    },
     is_blocked: {
         type: Boolean,
         default: false
@@ -37,7 +41,6 @@ const Loginschema = new mongoose.Schema({
         type: Date
     }
 });
-
 
 const collection = new mongoose.model("users", Loginschema);
 
